@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Program</title>
+</head>
+<style>
+html::-webkit-scrollbar, 
+body::-webkit-scrollbar {
+  display: none;
+}
+</style>
+<body style="margin: 0;">
+    <canvas id="canvas" style="display: block;"></canvas>
+
+    <script>
+        const PARENT_ORIGIN = document.referrer
+            ? new URL(document.referrer).origin
+            : null;
+        // LIVE_VARIABLES
+        const LIVE_VARIABLES = new Set(['density', 'dt', 'emission_size', 'smoke_emission', 'velocity_emission', 'mouse_radius', 'mouse_strength']);
+
+        const sendToParent = message => {
+            if (PARENT_ORIGIN) parent.postMessage(message, PARENT_ORIGIN);
+        };
+
+        const params = new URLSearchParams(window.location.search);
+
+        const width = Number(params.get("width")) || 600;
+        const height = Number(params.get("height")) || 600;
+
+        // Variables
+        const cell_size = Number(params.get('cell_size')) || 8;
+        const density = Number(params.get('density')) || 1;
+        const dt = Number(params.get('dt')) || 0.1;
+        const relaxation = Number(params.get('relaxation')) || 1;
+        const emission_size = Number(params.get('emission_size')) || 10;
+        const smoke_emission = Number(params.get('smoke_emission')) || 0.05;
+        const velocity_emission = Number(params.get('velocity_emission')) || 5;
+        const mouse_radius = Number(params.get('mouse_radius')) || 3;
+        const mouse_strength = Number(params.get('mouse_strength')) || 2;
+
+        const canvas = document.getElementById("canvas");
+        canvas.width = width;
+        canvas.height = height;
+
+        let firstOutputLogged = false;
+        var Module = {
+            canvas, // Variables
+            cell_size: cell_size,
+            density: density,
+            dt: dt,
+            relaxation: relaxation,
+            emission_size: emission_size,
+            smoke_emission: smoke_emission,
+            velocity_emission: velocity_emission,
+            mouse_radius: mouse_radius,
+            mouse_strength: mouse_strength,
+            
+            onRuntimeInitialized: () => {
+                sendToParent({ type: "program-ready" });
+            },
+            print: text => {
+                if (!firstOutputLogged) {
+                    console.debug("Module.print called:", text);
+                    firstOutputLogged = true;
+                }
+                sendToParent({ type: "emscripten-output", stream: "stdout", text });
+            },
+            printErr: text => {
+                if (!firstOutputLogged) {
+                    console.debug("Module.printErr called:", text);
+                    firstOutputLogged = true;
+                }
+                sendToParent({ type: "emscripten-output", stream: "stderr", text });
+            }
+            
+        };
+        window.addEventListener("message", event => {
+            if (!PARENT_ORIGIN || event.source !== parent || event.origin !== PARENT_ORIGIN) return;
+        
+            const message = event.data;
+            if (message?.type !== "set-variable") return;
+            if (!LIVE_VARIABLES.has(message.id)) return;
+            if (typeof message.value !== "number" || !Number.isFinite(message.value)) return;
+        
+            Module[message.id] = message.value;
+        });
+
+    </script>
+
+    <script src="index.js"></script>
+</body>
+</html>
