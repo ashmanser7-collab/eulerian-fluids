@@ -537,7 +537,7 @@ void main_loop() {
         std::cout << "Solidity brush" << std::endl;
     }
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-        if (d_pressed) {
+        if (!d_pressed) {
             display = (display+1)%6;
             std::cout << "Display changed" << std::endl;
         }
